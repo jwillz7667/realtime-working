@@ -9,17 +9,23 @@ import FunctionCallsPanel from "@/components/function-calls-panel";
 import { Item } from "@/components/types";
 import handleRealtimeEvent from "@/lib/handle-realtime-event";
 import PhoneNumberChecklist from "@/components/phone-number-checklist";
+import { getRealtimeWsUrl } from "@/lib/realtime-server";
 
 const CallInterface = () => {
   const [selectedPhoneNumber, setSelectedPhoneNumber] = useState("");
   const [allConfigsReady, setAllConfigsReady] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
   const [callStatus, setCallStatus] = useState("disconnected");
+  const [callSid, setCallSid] = useState<string | null>(null);
+  const [recordingSid, setRecordingSid] = useState<string | null>(null);
+  const [recordingStatus, setRecordingStatus] = useState<
+    "idle" | "starting" | "recording" | "stopping" | "error"
+  >("idle");
   const [ws, setWs] = useState<WebSocket | null>(null);
 
   useEffect(() => {
     if (allConfigsReady && !ws) {
-      const newWs = new WebSocket("ws://localhost:8081/logs");
+      const newWs = new WebSocket(getRealtimeWsUrl("/logs"));
 
       newWs.onopen = () => {
         console.log("Connected to logs websocket");
@@ -29,6 +35,25 @@ const CallInterface = () => {
       newWs.onmessage = (event) => {
         const data = JSON.parse(event.data);
         console.log("Received logs event:", data);
+        if (data?.type === "call.state" && typeof data.state === "string") {
+          setCallStatus(data.state);
+          if (Object.prototype.hasOwnProperty.call(data, "callSid")) {
+            setCallSid(data.callSid || null);
+          }
+          if (data.recording) {
+            const recStatus = data.recording.status;
+            if (recStatus === "recording") {
+              setRecordingStatus("recording");
+            } else if (recStatus === "idle" || recStatus === "stopped") {
+              setRecordingStatus("idle");
+            }
+            if (data.recording.recordingSid) {
+              setRecordingSid(data.recording.recordingSid);
+            } else if (recStatus === "idle") {
+              setRecordingSid(null);
+            }
+          }
+        }
         handleRealtimeEvent(data, setItems);
       };
 
@@ -36,6 +61,9 @@ const CallInterface = () => {
         console.log("Logs websocket disconnected");
         setWs(null);
         setCallStatus("disconnected");
+        setCallSid(null);
+        setRecordingSid(null);
+        setRecordingStatus("idle");
       };
 
       setWs(newWs);
@@ -43,7 +71,7 @@ const CallInterface = () => {
   }, [allConfigsReady, ws]);
 
   return (
-    <div className="h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       <ChecklistAndConfig
         ready={allConfigsReady}
         setReady={setAllConfigsReady}
@@ -51,10 +79,10 @@ const CallInterface = () => {
         setSelectedPhoneNumber={setSelectedPhoneNumber}
       />
       <TopBar />
-      <div className="flex-grow p-4 h-full overflow-hidden flex flex-col">
+      <div className="flex-grow p-4 flex flex-col">
         <div className="grid grid-cols-12 gap-4 h-full">
           {/* Left Column */}
-          <div className="col-span-3 flex flex-col h-full overflow-hidden">
+          <div className="col-span-3 flex flex-col h-full">
             <SessionConfigurationPanel
               callStatus={callStatus}
               onSave={(config) => {
@@ -78,6 +106,13 @@ const CallInterface = () => {
               selectedPhoneNumber={selectedPhoneNumber}
               allConfigsReady={allConfigsReady}
               setAllConfigsReady={setAllConfigsReady}
+              callSid={callSid}
+              setCallSid={setCallSid}
+              recordingSid={recordingSid}
+              setRecordingSid={setRecordingSid}
+              recordingStatus={recordingStatus}
+              setRecordingStatus={setRecordingStatus}
+              setCallStatus={setCallStatus}
             />
             <Transcript items={items} />
           </div>

@@ -41,6 +41,26 @@ Twilio uses TwiML (a form of XML) to specify how to handle a phone call. When a 
 
 We use `ngrok` to make our server reachable by Twilio.
 
+## Outgoing Calls
+
+With your environment variables set (`TWILIO_OUTBOUND_NUMBER` for a default caller ID and `PUBLIC_URL` for the websocket server), you can place calls directly from the webapp. Once the setup checklist is green, enter a destination number (E.164 format) in the "Dial Number" box and press **Start Outgoing Call**. The Next.js API will create a Twilio call that streams audio through the realtime server using the same TwiML template.
+
+### Call Recording
+
+After a call is active, the checklist panel exposes **Start** and **Stop** buttons that call Twilio's Voice Recording API for the live `callSid`. Recordings default to dual-channel µ-law audio and appear in the Twilio Console; the UI surfaces the recording SID once captured. Recording commands require the same `TWILIO_ACCOUNT_SID`/`TWILIO_AUTH_TOKEN` configured in `webapp/.env`.
+
+## Realtime Session Defaults
+
+The session configuration panel speaks the latest Realtime GA schema:
+
+- **Model** defaults to `gpt-realtime`, but you can target a dated release (e.g. `gpt-realtime-2025-08-28`).
+- **Audio pipeline** is tuned for Twilio: input/output media `g711_ulaw` (PCMU @ 8 kHz), near-field noise reduction, and `semantic_vad` with eagerness controls. Adjust these values or disable noise reduction as needed.
+- **Transcription** runs on `whisper-1` by default; clear the model field to turn it off or swap to `gpt-4o-transcribe` for low-latency captions.
+- **Tools & MCP servers** can be added from local templates, backend-advertised schemas, or raw JSON, and tool-choice policies map directly to `session.tool_choice`.
+- When the relay isn't running at `http://localhost:8081`, set `NEXT_PUBLIC_REALTIME_SERVER_URL` in `webapp/.env` so the UI can reach `/tools`, `/public-url`, and the `/logs` websocket.
+
+The server merges UI overrides with environment defaults from `websocket-server/.env`, so production deployments can lock down required settings while still allowing call-by-call experimentation.
+
 ### Life of a phone call
 
 Setup
@@ -87,6 +107,8 @@ npm run dev
 ### OpenAI & Twilio
 
 Set your credentials in `webapp/.env` and `websocket-server` - see `webapp/.env.example` and `websocket-server.env.example` for reference.
+
+- `websocket-server/.env` now controls realtime defaults (model, codecs, noise reduction, turn detection). Keep production-safe values there and only expose non-sensitive overrides via the UI.
 
 ### Ngrok
 

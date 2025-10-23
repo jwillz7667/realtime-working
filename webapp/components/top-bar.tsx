@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { BookOpen, FileText } from "lucide-react";
+import { Activity, BookOpen, FileText } from "lucide-react";
 import Link from "next/link";
 
 const TopBar = () => {
@@ -18,6 +18,18 @@ const TopBar = () => {
         <h1 className="text-xl font-semibold">OpenAI Call Assistant</h1>
       </div>
       <div className="flex gap-3">
+        <Button variant="ghost" size="sm">
+          <Link href="/events" className="flex items-center gap-2">
+            <Activity className="w-4 h-4" />
+            Events
+          </Link>
+        </Button>
+        <Button variant="ghost" size="sm">
+          <Link href="/recordings" className="flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            Recordings
+          </Link>
+        </Button>
         <Button variant="ghost" size="sm">
           <Link
             href="https://platform.openai.com/docs/guides/realtime"

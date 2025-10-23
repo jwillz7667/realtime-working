@@ -1,4 +1,37 @@
 import { Item } from "@/components/types";
+import { isRealtimeServerEventType } from "@/lib/realtime-event-types";
+
+const SUPPRESSED_UNDOCUMENTED_EVENTS = new Set([
+  "response.audio.delta",
+  "response.audio.done",
+  "response.audio_transcript.delta",
+  "response.audio_transcript.done",
+  "conversation.created",
+  "conversation.item.created",
+  "mcp_list_tools.completed",
+  "mcp_list_tools.failed",
+  "mcp_list_tools.in_progress",
+  "rate_limits.updated",
+  "response.content_part.added",
+  "response.content_part.done",
+  "response.function_call_arguments.delta",
+  "response.function_call_arguments.done",
+  "response.mcp_call.completed",
+  "response.mcp_call.failed",
+  "response.mcp_call.in_progress",
+  "response.mcp_call_arguments.delta",
+  "response.mcp_call_arguments.done",
+  "response.output_audio.delta",
+  "response.output_audio.done",
+  "response.output_audio_transcript.delta",
+  "response.output_audio_transcript.done",
+  "response.output_text.delta",
+  "response.output_text.done",
+  "response.text.delta",
+  "response.text.done",
+  "transcription_session.update",
+  "transcription_session.updated",
+]);
 
 export default function handleRealtimeEvent(
   ev: any,
@@ -28,7 +61,18 @@ export default function handleRealtimeEvent(
     });
   }
 
-  const { type } = ev;
+  const { type } = ev || {};
+
+  if (!type) {
+    console.debug("[Realtime] Event missing type", ev);
+    return;
+  }
+
+  if (!isRealtimeServerEventType(type)) {
+    if (!SUPPRESSED_UNDOCUMENTED_EVENTS.has(type)) {
+      console.debug("[Realtime] Undocumented event", type);
+    }
+  }
 
   switch (type) {
     case "session.created": {
@@ -53,7 +97,8 @@ export default function handleRealtimeEvent(
       break;
     }
 
-    case "conversation.item.created": {
+    case "conversation.item.created":
+    case "conversation.item.added": {
       const { item } = ev;
       if (item.type === "message") {
         // A completed message from user or assistant
@@ -116,27 +161,11 @@ export default function handleRealtimeEvent(
       break;
     }
 
-    case "conversation.item.input_audio_transcription.completed": {
-      // Update the user message with the final transcript
-      const { item_id, transcript } = ev;
-      setItems((prev) =>
-        prev.map((m) =>
-          m.id === item_id && m.type === "message" && m.role === "user"
-            ? {
-                ...m,
-                content: [{ type: "text", text: transcript }],
-                status: "completed",
-              }
-            : m
-        )
-      );
-      break;
-    }
-
     case "response.content_part.added": {
       const { item_id, part, output_index } = ev;
-      // Append new content to the assistant message if output_index == 0
-      if (part.type === "text" && output_index === 0) {
+      const isTextPart =
+        part && (part.type === "text" || part.type === "output_text");
+      if (isTextPart && output_index === 0 && typeof part.text === "string") {
         setItems((prev) => {
           const idx = prev.findIndex((m) => m.id === item_id);
           if (idx >= 0) {
@@ -146,7 +175,7 @@ export default function handleRealtimeEvent(
               ...updated[idx],
               content: [
                 ...existingContent,
-                { type: part.type, text: part.text },
+                { type: "text", text: part.text },
               ],
             };
             return updated;
@@ -158,7 +187,7 @@ export default function handleRealtimeEvent(
                 id: item_id,
                 type: "message",
                 role: "assistant",
-                content: [{ type: part.type, text: part.text }],
+                content: [{ type: "text", text: part.text }],
                 status: "running",
               }),
             ];
@@ -168,7 +197,7 @@ export default function handleRealtimeEvent(
       break;
     }
 
-    case "response.audio_transcript.delta": {
+    case "response.output_audio_transcript.delta": {
       // Streaming transcript text (assistant)
       const { item_id, delta, output_index } = ev;
       if (output_index === 0 && delta) {
@@ -225,7 +254,73 @@ export default function handleRealtimeEvent(
       break;
     }
 
+    case "response.output_text.delta": {
+      const { item_id, delta, output_index } = ev;
+      if (!delta || output_index !== 0) break;
+      setItems((prev) => {
+        const idx = prev.findIndex((m) => m.id === item_id);
+        if (idx >= 0) {
+          const updated = [...prev];
+          const existingContent = updated[idx].content || [];
+          updated[idx] = {
+            ...updated[idx],
+            content: [...existingContent, { type: "text", text: delta }],
+          };
+          return updated;
+        }
+        return [
+          ...prev,
+          createNewItem({
+            id: item_id,
+            type: "message",
+            role: "assistant",
+            content: [{ type: "text", text: delta }],
+            status: "running",
+          }),
+        ];
+      });
+      break;
+    }
+
+    case "conversation.item.input_audio_transcription.delta": {
+      const { item_id, delta } = ev;
+      if (!delta) break;
+      setItems((prev) =>
+        prev.map((m) =>
+          m.id === item_id && m.type === "message" && m.role === "user"
+            ? {
+                ...m,
+                content: [{ type: "text", text: delta }],
+                status: "running",
+              }
+            : m
+        )
+      );
+      break;
+    }
+
+    case "conversation.item.input_audio_transcription.completed": {
+      const { item_id, transcript } = ev;
+      setItems((prev) =>
+        prev.map((m) =>
+          m.id === item_id && m.type === "message" && m.role === "user"
+            ? {
+                ...m,
+                content: [{ type: "text", text: transcript }],
+                status: "completed",
+              }
+            : m
+        )
+      );
+      break;
+    }
+
     default:
+      console.debug(
+        "[Realtime] Event received without explicit handler",
+        type,
+        ev
+      );
       break;
   }
 }

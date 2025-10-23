@@ -15,7 +15,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { toolTemplates } from "@/lib/tool-templates";
 import { BackendTag } from "./backend-tag";
 
 interface ToolConfigurationDialogProps {
@@ -29,6 +28,7 @@ interface ToolConfigurationDialogProps {
   onSchemaChange: (val: string) => void;
   onSave: () => void;
   backendTools: any[]; // schemas returned from the server
+  templates?: any[];
 }
 
 export const ToolConfigurationDialog: React.FC<
@@ -44,9 +44,10 @@ export const ToolConfigurationDialog: React.FC<
   onSchemaChange,
   onSave,
   backendTools,
+  templates = [],
 }) => {
   // Combine local templates and backend templates
-  const localTemplateOptions = toolTemplates.map((template) => ({
+  const localTemplateOptions = templates.map((template) => ({
     ...template,
     source: "local",
   }));

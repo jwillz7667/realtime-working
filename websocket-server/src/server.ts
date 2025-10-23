@@ -38,12 +38,27 @@ app.get("/public-url", (req, res) => {
 });
 
 app.all("/twiml", (req, res) => {
-  const wsUrl = new URL(PUBLIC_URL);
-  wsUrl.protocol = "wss:";
-  wsUrl.pathname = `/call`;
+  try {
+    const baseUrl = PUBLIC_URL || `${req.protocol}://${req.get("host")}`;
+    if (!baseUrl) {
+      throw new Error("No PUBLIC_URL configured and unable to infer host");
+    }
 
-  const twimlContent = twimlTemplate.replace("{{WS_URL}}", wsUrl.toString());
-  res.type("text/xml").send(twimlContent);
+    const wsUrl = new URL(baseUrl);
+    wsUrl.protocol = wsUrl.protocol === "https:" ? "wss:" : "ws:";
+    wsUrl.pathname = `/call`;
+
+    const twimlContent = twimlTemplate.replace("{{WS_URL}}", wsUrl.toString());
+    res.type("text/xml").send(twimlContent);
+  } catch (error) {
+    console.error("Failed to generate TwiML", error);
+    res
+      .status(500)
+      .type("text/plain")
+      .send(
+        "Server misconfigured. Set PUBLIC_URL to the externally reachable base URL (e.g. your ngrok https endpoint)."
+      );
+  }
 });
 
 // New endpoint to list available tools (schemas)
@@ -52,7 +67,6 @@ app.get("/tools", (req, res) => {
 });
 
 let currentCall: WebSocket | null = null;
-let currentLogs: WebSocket | null = null;
 
 wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
   const url = new URL(req.url || "", `http://${req.headers.host}`);
@@ -70,9 +84,7 @@ wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
     currentCall = ws;
     handleCallConnection(currentCall, OPENAI_API_KEY);
   } else if (type === "logs") {
-    if (currentLogs) currentLogs.close();
-    currentLogs = ws;
-    handleFrontendConnection(currentLogs);
+    handleFrontendConnection(ws);
   } else {
     ws.close();
   }

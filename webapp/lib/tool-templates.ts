@@ -62,4 +62,35 @@ export const toolTemplates = [
       },
     },
   },
+  {
+    name: "code_executor",
+    type: "tool",
+    tool: "code_interpreter",
+    display_name: "Code Interpreter",
+    description:
+      "Execute Python code in an isolated sandbox and return stdout/stderr.",
+  },
+  {
+    name: "files_search",
+    type: "tool",
+    tool: "file_search",
+    display_name: "File Search",
+    description:
+      "Search across embedded documents and return ranked excerpts for grounding.",
+    settings: {
+      max_results: 5,
+    },
+  },
+  {
+    name: "structured_data_lookup",
+    type: "tool",
+    tool: "structured_data",
+    display_name: "Structured Data",
+    description:
+      "Query structured datasets using natural language and structured filters.",
+    settings: {
+      dataset_id: "example-dataset",
+      confidence_threshold: 0.6,
+    },
+  },
 ];

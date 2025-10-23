@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getRealtimeHttpUrl } from "@/lib/realtime-server";
 
 export default function ChecklistAndConfig({
   ready,
@@ -57,27 +58,46 @@ export default function ChecklistAndConfig({
         let res = await fetch("/api/twilio");
         if (!res.ok) throw new Error("Failed credentials check");
         const credData = await res.json();
-        setHasCredentials(!!credData?.credentialsSet);
+        const credentialsSet = !!credData?.credentialsSet;
+        setHasCredentials(credentialsSet);
+
+        if (!credentialsSet) {
+          setPhoneNumbers([]);
+          setCurrentNumberSid("");
+          setCurrentVoiceUrl("");
+          setSelectedPhoneNumber("");
+        }
 
         // 2. Fetch numbers
-        res = await fetch("/api/twilio/numbers");
-        if (!res.ok) throw new Error("Failed to fetch phone numbers");
-        const numbersData = await res.json();
-        if (Array.isArray(numbersData) && numbersData.length > 0) {
-          setPhoneNumbers(numbersData);
-          // If currentNumberSid not set or not in the list, use first
-          const selected =
-            numbersData.find((p: PhoneNumber) => p.sid === currentNumberSid) ||
-            numbersData[0];
-          setCurrentNumberSid(selected.sid);
-          setCurrentVoiceUrl(selected.voiceUrl || "");
-          setSelectedPhoneNumber(selected.friendlyName || "");
+        if (credentialsSet) {
+          try {
+            res = await fetch("/api/twilio/numbers");
+            if (!res.ok) throw new Error("Failed to fetch phone numbers");
+            const numbersData = await res.json();
+            if (Array.isArray(numbersData) && numbersData.length > 0) {
+              setPhoneNumbers(numbersData);
+              // If currentNumberSid not set or not in the list, use first
+              const selected =
+                numbersData.find((p: PhoneNumber) => p.sid === currentNumberSid) ||
+                numbersData[0];
+              setCurrentNumberSid(selected.sid);
+              setCurrentVoiceUrl(selected.voiceUrl || "");
+              setSelectedPhoneNumber(
+                selected.phoneNumber || selected.friendlyName || ""
+              );
+            } else {
+              setPhoneNumbers([]);
+            }
+          } catch (errFetch) {
+            console.error(errFetch);
+            setPhoneNumbers([]);
+          }
         }
 
         // 3. Check local server & public URL
         let foundPublicUrl = "";
         try {
-          const resLocal = await fetch("http://localhost:8081/public-url");
+          const resLocal = await fetch(getRealtimeHttpUrl("/public-url"));
           if (resLocal.ok) {
             const pubData = await resLocal.json();
             foundPublicUrl = pubData?.publicUrl || "";
@@ -171,14 +191,23 @@ export default function ChecklistAndConfig({
         field:
           phoneNumbers.length > 0 ? (
             phoneNumbers.length === 1 ? (
-              <Input value={phoneNumbers[0].friendlyName || ""} disabled />
+              <Input
+                value={
+                  phoneNumbers[0].friendlyName ||
+                  phoneNumbers[0].phoneNumber ||
+                  ""
+                }
+                disabled
+              />
             ) : (
               <Select
                 onValueChange={(value) => {
                   setCurrentNumberSid(value);
                   const selected = phoneNumbers.find((p) => p.sid === value);
                   if (selected) {
-                    setSelectedPhoneNumber(selected.friendlyName || "");
+                    setSelectedPhoneNumber(
+                      selected.phoneNumber || selected.friendlyName || ""
+                    );
                     setCurrentVoiceUrl(selected.voiceUrl || "");
                   }
                 }}
@@ -190,7 +219,7 @@ export default function ChecklistAndConfig({
                 <SelectContent>
                   {phoneNumbers.map((phone) => (
                     <SelectItem key={phone.sid} value={phone.sid}>
-                      {phone.friendlyName}
+                      {phone.friendlyName || phone.phoneNumber}
                     </SelectItem>
                   ))}
                 </SelectContent>
