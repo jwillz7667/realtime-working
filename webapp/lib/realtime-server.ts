@@ -5,7 +5,12 @@ const ENV_BASE =
 const FALLBACK_BASE = "http://localhost:8081";
 
 function ensureAbsoluteBase() {
-  return (ENV_BASE || FALLBACK_BASE).replace(/\/$/, "");
+  const base = (ENV_BASE || FALLBACK_BASE).trim().replace(/\/$/, "");
+  if (!base) {
+    console.error("[realtime-server] No base URL configured, using fallback");
+    return FALLBACK_BASE;
+  }
+  return base;
 }
 
 function normalizePath(path: string) {
@@ -16,8 +21,22 @@ function normalizePath(path: string) {
 export function getRealtimeHttpUrl(path: string) {
   const base = ensureAbsoluteBase();
   const normalized = normalizePath(path);
-  const url = new URL(normalized, base);
-  return url.toString();
+
+  console.log("[realtime-server] Constructing URL:", { base, path, normalized });
+
+  try {
+    const url = new URL(normalized, base);
+    return url.toString();
+  } catch (error) {
+    console.error("[realtime-server] Failed to construct URL:", {
+      base,
+      normalized,
+      ENV_BASE,
+      FALLBACK_BASE,
+      error
+    });
+    throw error;
+  }
 }
 
 export function getRealtimeWsUrl(path: string) {
