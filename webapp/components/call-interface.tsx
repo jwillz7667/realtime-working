@@ -117,7 +117,7 @@ const CallInterface = () => {
   }, [ws]);
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       <TopBar />
       <div className="flex-grow p-2 sm:p-4 flex flex-col overflow-hidden">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 h-full overflow-hidden">
