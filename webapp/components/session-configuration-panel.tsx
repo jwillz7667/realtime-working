@@ -220,34 +220,34 @@ const SessionConfigurationPanel: React.FC<SessionConfigurationPanelProps> = ({
 
   return (
     <Card className="flex flex-col h-full w-full mx-auto">
-      <CardHeader className="pb-0 px-4 sm:px-6">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold">
-            Session Configuration
-            <span className="ml-2 text-xs font-normal capitalize text-muted-foreground">
+      <CardHeader className="pb-2 px-3 sm:px-4 lg:px-6">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-sm sm:text-base font-semibold truncate">
+            Session Config
+            <span className="ml-1 sm:ml-2 text-[10px] sm:text-xs font-normal capitalize text-muted-foreground">
               ({callStatus || "disconnected"})
             </span>
           </CardTitle>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
             {saveStatus === "error" ? (
               <span className="flex items-center gap-1 text-red-500">
-                <AlertCircle className="h-3 w-3" /> Save failed
+                <AlertCircle className="h-3 w-3" /> <span className="hidden sm:inline">Save failed</span><span className="sm:hidden">Error</span>
               </span>
             ) : hasUnsavedChanges ? (
-              <span>Not saved</span>
+              <span className="hidden sm:inline">Not saved</span>
             ) : saveStatus === "saved" ? (
               <span className="flex items-center gap-1">
-                <Check className="h-3 w-3" /> Saved
+                <Check className="h-3 w-3" /> <span className="hidden sm:inline">Saved</span>
               </span>
             ) : (
-              <span>Up to date</span>
+              <span className="hidden sm:inline">Up to date</span>
             )}
           </div>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 p-3 sm:p-5">
+      <CardContent className="flex-1 p-2 sm:p-3 lg:p-5">
         <ScrollArea className="h-full">
-          <div className="space-y-5 sm:space-y-6 m-1">
+          <div className="space-y-4 sm:space-y-5 lg:space-y-6 m-1">
             <div className="space-y-2">
               <Label htmlFor="instructions">Instructions</Label>
               <Textarea
@@ -552,13 +552,13 @@ const SessionConfigurationPanel: React.FC<SessionConfigurationPanelProps> = ({
           </div>
         </ScrollArea>
       </CardContent>
-      <div className="border-t px-4 py-3 sm:px-6 flex items-center justify-end">
+      <div className="border-t px-3 py-2 sm:px-4 sm:py-3 lg:px-6 flex items-center justify-end">
         <Button
           onClick={handleSave}
           disabled={saveStatus === "saving" || !hasUnsavedChanges}
-          className="w-full sm:w-auto"
+          className="w-full sm:w-auto text-xs sm:text-sm"
         >
-          {saveStatus === "saving" ? "Saving..." : "Save configuration"}
+          {saveStatus === "saving" ? "Saving..." : <><span className="hidden sm:inline">Save configuration</span><span className="sm:hidden">Save</span></>}
         </Button>
       </div>
     </Card>

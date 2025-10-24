@@ -119,10 +119,10 @@ const CallInterface = () => {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <TopBar />
-      <div className="flex-grow p-4 flex flex-col">
-        <div className="grid grid-cols-12 gap-4 h-full">
-          {/* Left Column */}
-          <div className="col-span-3 flex flex-col gap-4 h-full overflow-y-auto">
+      <div className="flex-grow p-2 sm:p-4 flex flex-col overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 h-full overflow-hidden">
+          {/* Left Column - Controls & Configuration */}
+          <div className="col-span-1 md:col-span-2 lg:col-span-3 flex flex-col gap-3 sm:gap-4 overflow-y-auto max-h-[calc(100vh-5rem)] lg:h-full">
             <OutgoingCalls
               onCallStarted={(sid) => setActiveCallSid(sid)}
               activeCallSid={activeCallSid}
@@ -150,16 +150,16 @@ const CallInterface = () => {
           </div>
 
           {/* Middle Column: Transcript */}
-          <div className="col-span-6 flex flex-col gap-4 h-full overflow-hidden">
+          <div className="col-span-1 md:col-span-2 lg:col-span-6 flex flex-col gap-3 sm:gap-4 min-h-[400px] lg:h-full overflow-hidden">
             <Transcript items={items} />
           </div>
 
           {/* Right Column: Call History & Function Calls */}
-          <div className="col-span-3 flex flex-col gap-4 h-full overflow-hidden">
-            <div className="h-1/2">
+          <div className="col-span-1 md:col-span-2 lg:col-span-3 flex flex-col gap-3 sm:gap-4 overflow-hidden lg:h-full">
+            <div className="min-h-[300px] lg:h-1/2 overflow-hidden">
               <CallHistory />
             </div>
-            <div className="h-1/2">
+            <div className="min-h-[300px] lg:h-1/2 overflow-hidden">
               <FunctionCallsPanel items={items} ws={ws} />
             </div>
           </div>

@@ -27,16 +27,16 @@ const Transcript: React.FC<TranscriptProps> = ({ items }) => {
     <Card className="h-full flex flex-col overflow-hidden">
       <CardContent className="flex-1 h-full min-h-0 overflow-hidden flex flex-col p-0">
         {transcriptItems.length === 0 && (
-          <div className="flex flex-1 h-full items-center justify-center mt-36">
-            <div className="flex flex-col items-center gap-3 justify-center h-full">
-              <div className="h-[140px] w-[140px] rounded-full bg-secondary/20 flex items-center justify-center">
-                <MessageSquare className="h-16 w-16 text-foreground/10 bg-transparent" />
+          <div className="flex flex-1 h-full items-center justify-center mt-12 sm:mt-36">
+            <div className="flex flex-col items-center gap-3 justify-center h-full px-4">
+              <div className="h-[100px] w-[100px] sm:h-[140px] sm:w-[140px] rounded-full bg-secondary/20 flex items-center justify-center">
+                <MessageSquare className="h-12 w-12 sm:h-16 sm:w-16 text-foreground/10 bg-transparent" />
               </div>
               <div className="text-center space-y-1">
                 <p className="text-sm font-medium text-foreground/60">
                   No messages yet
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Start a call to see the transcript
                 </p>
               </div>
@@ -44,7 +44,7 @@ const Transcript: React.FC<TranscriptProps> = ({ items }) => {
           </div>
         )}
         <ScrollArea className="h-full">
-          <div className="flex flex-col gap-6 p-6">
+          <div className="flex flex-col gap-4 sm:gap-6 p-3 sm:p-6">
             {transcriptItems.map((msg, i) => {
               const isUser = msg.role === "user";
               const isTool = msg.role === "tool";
@@ -57,9 +57,9 @@ const Transcript: React.FC<TranscriptProps> = ({ items }) => {
                 : "";
 
               return (
-                <div key={i} className="flex items-start gap-3">
+                <div key={i} className="flex items-start gap-2 sm:gap-3">
                   <div
-                    className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center border ${
+                    className={`shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border ${
                       isUser
                         ? "bg-background border-border"
                         : isTool
@@ -67,12 +67,12 @@ const Transcript: React.FC<TranscriptProps> = ({ items }) => {
                         : "bg-secondary border-secondary"
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
+                    <div className="flex items-center gap-2 mb-1 sm:mb-1.5">
                       <span
-                        className={`text-sm font-medium ${
+                        className={`text-xs sm:text-sm font-medium ${
                           isUser ? "text-muted-foreground" : "text-foreground"
                         }`}
                       >
@@ -82,11 +82,11 @@ const Transcript: React.FC<TranscriptProps> = ({ items }) => {
                           ? "Tool Response"
                           : "Assistant"}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-[10px] sm:text-xs text-muted-foreground">
                         {msg.timestamp}
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed break-words">
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed break-words">
                       {displayText}
                     </p>
                   </div>
