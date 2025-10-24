@@ -5,6 +5,7 @@ import TopBar from "@/components/top-bar";
 import SessionConfigurationPanel from "@/components/session-configuration-panel";
 import Transcript from "@/components/transcript";
 import FunctionCallsPanel from "@/components/function-calls-panel";
+import OutgoingCalls from "@/components/outgoing-calls";
 import { Item } from "@/components/types";
 import handleRealtimeEvent from "@/lib/handle-realtime-event";
 import { getRealtimeWsUrl } from "@/lib/realtime-server";
@@ -117,7 +118,8 @@ const CallInterface = () => {
       <div className="flex-grow p-4 flex flex-col">
         <div className="grid grid-cols-12 gap-4 h-full">
           {/* Left Column */}
-          <div className="col-span-3 flex flex-col h-full">
+          <div className="col-span-3 flex flex-col gap-4 h-full overflow-y-auto">
+            <OutgoingCalls />
             <SessionConfigurationPanel
               callStatus={callStatus}
               onSave={(config) => {
