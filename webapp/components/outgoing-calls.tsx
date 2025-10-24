@@ -6,9 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Phone, PhoneOff } from "lucide-react";
 
-export default function OutgoingCalls() {
+interface OutgoingCallsProps {
+  onCallStarted?: (callSid: string) => void;
+  onCallEnded?: () => void;
+  activeCallSid: string | null;
+}
+
+export default function OutgoingCalls({ onCallStarted, onCallEnded, activeCallSid }: OutgoingCallsProps) {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isDialing, setIsDialing] = useState(false);
+  const [isEndingCall, setIsEndingCall] = useState(false);
   const [callStatus, setCallStatus] = useState("");
 
   const handleCall = async () => {
@@ -31,6 +38,9 @@ export default function OutgoingCalls() {
 
       if (response.ok) {
         setCallStatus(`Call initiated! SID: ${data.sid}`);
+        if (onCallStarted) {
+          onCallStarted(data.sid);
+        }
       } else {
         setCallStatus(`Error: ${data.error || "Failed to place call"}`);
       }
@@ -38,6 +48,36 @@ export default function OutgoingCalls() {
       setCallStatus(`Error: ${error}`);
     } finally {
       setIsDialing(false);
+    }
+  };
+
+  const handleEndCall = async () => {
+    if (!activeCallSid) return;
+
+    setIsEndingCall(true);
+    setCallStatus("Ending call...");
+
+    try {
+      const response = await fetch("/api/twilio/end-call", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callSid: activeCallSid }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setCallStatus("Call ended");
+        if (onCallEnded) {
+          onCallEnded();
+        }
+      } else {
+        setCallStatus(`Error: ${data.error || "Failed to end call"}`);
+      }
+    } catch (error) {
+      setCallStatus(`Error: ${error}`);
+    } finally {
+      setIsEndingCall(false);
     }
   };
 
@@ -64,23 +104,44 @@ export default function OutgoingCalls() {
           </p>
         </div>
 
-        <Button
-          onClick={handleCall}
-          disabled={isDialing || !phoneNumber.trim()}
-          className="w-full"
-        >
-          {isDialing ? (
-            <>
-              <PhoneOff className="mr-2 h-4 w-4" />
-              Calling...
-            </>
-          ) : (
-            <>
-              <Phone className="mr-2 h-4 w-4" />
-              Place Call
-            </>
-          )}
-        </Button>
+        {!activeCallSid ? (
+          <Button
+            onClick={handleCall}
+            disabled={isDialing || !phoneNumber.trim()}
+            className="w-full"
+          >
+            {isDialing ? (
+              <>
+                <PhoneOff className="mr-2 h-4 w-4" />
+                Calling...
+              </>
+            ) : (
+              <>
+                <Phone className="mr-2 h-4 w-4" />
+                Place Call
+              </>
+            )}
+          </Button>
+        ) : (
+          <Button
+            onClick={handleEndCall}
+            disabled={isEndingCall}
+            variant="destructive"
+            className="w-full"
+          >
+            {isEndingCall ? (
+              <>
+                <PhoneOff className="mr-2 h-4 w-4" />
+                Ending Call...
+              </>
+            ) : (
+              <>
+                <PhoneOff className="mr-2 h-4 w-4" />
+                End Call
+              </>
+            )}
+          </Button>
+        )}
 
         {callStatus && (
           <div className="text-sm text-center p-2 bg-muted rounded">

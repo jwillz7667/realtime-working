@@ -14,6 +14,7 @@ const CallInterface = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [callStatus, setCallStatus] = useState("disconnected");
   const [callSid, setCallSid] = useState<string | null>(null);
+  const [activeCallSid, setActiveCallSid] = useState<string | null>(null);
   const [recordingSid, setRecordingSid] = useState<string | null>(null);
   const [recordingStatus, setRecordingStatus] = useState<
     "idle" | "starting" | "recording" | "stopping" | "error"
@@ -119,7 +120,11 @@ const CallInterface = () => {
         <div className="grid grid-cols-12 gap-4 h-full">
           {/* Left Column */}
           <div className="col-span-3 flex flex-col gap-4 h-full overflow-y-auto">
-            <OutgoingCalls />
+            <OutgoingCalls
+              onCallStarted={(sid) => setActiveCallSid(sid)}
+              activeCallSid={activeCallSid}
+              onCallEnded={() => setActiveCallSid(null)}
+            />
             <SessionConfigurationPanel
               callStatus={callStatus}
               onSave={(config) => {
