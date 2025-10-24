@@ -6,6 +6,8 @@ import SessionConfigurationPanel from "@/components/session-configuration-panel"
 import Transcript from "@/components/transcript";
 import FunctionCallsPanel from "@/components/function-calls-panel";
 import OutgoingCalls from "@/components/outgoing-calls";
+import CallHistory from "@/components/call-history";
+import SavedPrompts from "@/components/saved-prompts";
 import { Item } from "@/components/types";
 import handleRealtimeEvent from "@/lib/handle-realtime-event";
 import { getRealtimeWsUrl } from "@/lib/realtime-server";
@@ -21,6 +23,7 @@ const CallInterface = () => {
   >("idle");
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [hasStartedRecording, setHasStartedRecording] = useState(false);
+  const [currentInstructions, setCurrentInstructions] = useState<string>("");
 
   // Auto-start recording when call becomes active
   useEffect(() => {
@@ -124,9 +127,13 @@ const CallInterface = () => {
               onCallStarted={(sid) => setActiveCallSid(sid)}
               activeCallSid={activeCallSid}
               onCallEnded={() => setActiveCallSid(null)}
+              currentInstructions={currentInstructions}
             />
+            <SavedPrompts onSelectPrompt={(instructions) => setCurrentInstructions(instructions)} />
             <SessionConfigurationPanel
               callStatus={callStatus}
+              currentInstructions={currentInstructions}
+              onInstructionsChange={setCurrentInstructions}
               onSave={(config) => {
                 if (ws && ws.readyState === WebSocket.OPEN) {
                   const updateEvent = {
@@ -147,9 +154,14 @@ const CallInterface = () => {
             <Transcript items={items} />
           </div>
 
-          {/* Right Column: Function Calls */}
-          <div className="col-span-3 flex flex-col h-full overflow-hidden">
-            <FunctionCallsPanel items={items} ws={ws} />
+          {/* Right Column: Call History & Function Calls */}
+          <div className="col-span-3 flex flex-col gap-4 h-full overflow-hidden">
+            <div className="h-1/2">
+              <CallHistory />
+            </div>
+            <div className="h-1/2">
+              <FunctionCallsPanel items={items} ws={ws} />
+            </div>
           </div>
         </div>
       </div>

@@ -10,9 +10,10 @@ interface OutgoingCallsProps {
   onCallStarted?: (callSid: string) => void;
   onCallEnded?: () => void;
   activeCallSid: string | null;
+  currentInstructions: string;
 }
 
-export default function OutgoingCalls({ onCallStarted, onCallEnded, activeCallSid }: OutgoingCallsProps) {
+export default function OutgoingCalls({ onCallStarted, onCallEnded, activeCallSid, currentInstructions }: OutgoingCallsProps) {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isDialing, setIsDialing] = useState(false);
   const [isEndingCall, setIsEndingCall] = useState(false);
@@ -38,6 +39,23 @@ export default function OutgoingCalls({ onCallStarted, onCallEnded, activeCallSi
 
       if (response.ok) {
         setCallStatus(`Call initiated! SID: ${data.sid}`);
+
+        // Save call to database
+        try {
+          await fetch("/api/calls", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              phone_number: phoneNumber,
+              call_sid: data.sid,
+              direction: "outbound",
+              instructions_used: currentInstructions,
+            }),
+          });
+        } catch (dbError) {
+          console.error("Failed to save call to database:", dbError);
+        }
+
         if (onCallStarted) {
           onCallStarted(data.sid);
         }

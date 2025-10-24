@@ -11,6 +11,8 @@ import { AlertCircle, Check } from "lucide-react";
 
 interface SessionConfigurationPanelProps {
   callStatus: string;
+  currentInstructions: string;
+  onInstructionsChange: (instructions: string) => void;
   onSave: (config: any) => Promise<void> | void;
 }
 
@@ -102,9 +104,10 @@ const DEFAULT_AUDIO_FORMAT = {
 
 const SessionConfigurationPanel: React.FC<SessionConfigurationPanelProps> = ({
   callStatus,
+  currentInstructions,
+  onInstructionsChange,
   onSave,
 }) => {
-  const [instructions, setInstructions] = useState(DEFAULT_INSTRUCTIONS);
   const [model, setModel] = useState(MODEL_OPTIONS[0]?.value ?? "gpt-realtime-2025-08-28");
   const [voice, setVoice] = useState<(typeof VOICE_OPTIONS)[number]>(VOICE_OPTIONS[0]);
   const [turnDetectionType, setTurnDetectionType] = useState<TurnDetectionType>("semantic_vad");
@@ -131,7 +134,7 @@ const SessionConfigurationPanel: React.FC<SessionConfigurationPanelProps> = ({
     setHasUnsavedChanges(true);
     setSaveStatus("idle");
   }, [
-    instructions,
+    currentInstructions,
     model,
     voice,
     turnDetectionType,
@@ -196,7 +199,7 @@ const SessionConfigurationPanel: React.FC<SessionConfigurationPanelProps> = ({
 
       const payload = {
         model,
-        instructions,
+        instructions: currentInstructions,
         audio: {
           input: inputConfig,
           output: {
@@ -251,8 +254,8 @@ const SessionConfigurationPanel: React.FC<SessionConfigurationPanelProps> = ({
                 id="instructions"
                 placeholder="Enter instructions"
                 className="min-h-[100px] resize-none"
-                value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
+                value={currentInstructions}
+                onChange={(e) => onInstructionsChange(e.target.value)}
               />
             </div>
 
