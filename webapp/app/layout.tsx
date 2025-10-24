@@ -9,7 +9,6 @@ export const metadata: Metadata = {
   title: "Verbio Call Assistant",
   description:
     "AI-powered phone call assistant using OpenAI Realtime API and Twilio",
-  manifest: "/manifest.json",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
