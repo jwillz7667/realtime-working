@@ -2,18 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import TopBar from "@/components/top-bar";
-import ChecklistAndConfig from "@/components/checklist-and-config";
 import SessionConfigurationPanel from "@/components/session-configuration-panel";
 import Transcript from "@/components/transcript";
 import FunctionCallsPanel from "@/components/function-calls-panel";
 import { Item } from "@/components/types";
 import handleRealtimeEvent from "@/lib/handle-realtime-event";
-import PhoneNumberChecklist from "@/components/phone-number-checklist";
 import { getRealtimeWsUrl } from "@/lib/realtime-server";
 
 const CallInterface = () => {
-  const [selectedPhoneNumber, setSelectedPhoneNumber] = useState("");
-  const [allConfigsReady, setAllConfigsReady] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
   const [callStatus, setCallStatus] = useState("disconnected");
   const [callSid, setCallSid] = useState<string | null>(null);
@@ -22,9 +18,54 @@ const CallInterface = () => {
     "idle" | "starting" | "recording" | "stopping" | "error"
   >("idle");
   const [ws, setWs] = useState<WebSocket | null>(null);
+  const [hasStartedRecording, setHasStartedRecording] = useState(false);
+
+  // Auto-start recording when call becomes active
+  useEffect(() => {
+    if (callSid && callStatus === "active" && !hasStartedRecording && recordingStatus === "idle") {
+      console.log("Auto-starting recording for call:", callSid);
+      setRecordingStatus("starting");
+      setHasStartedRecording(true);
+
+      fetch("/api/twilio/recordings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "start",
+          callSid,
+          options: {
+            recordingChannels: "dual",
+            trim: "do-not-trim",
+          },
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.recordingSid) {
+            console.log("Recording started:", data.recordingSid);
+            setRecordingSid(data.recordingSid);
+            setRecordingStatus("recording");
+          } else if (data.error) {
+            console.error("Failed to start recording:", data.error);
+            setRecordingStatus("error");
+          }
+        })
+        .catch((err) => {
+          console.error("Recording API error:", err);
+          setRecordingStatus("error");
+        });
+    }
+  }, [callSid, callStatus, hasStartedRecording, recordingStatus]);
+
+  // Reset recording state when call ends
+  useEffect(() => {
+    if (callStatus === "disconnected") {
+      setHasStartedRecording(false);
+    }
+  }, [callStatus]);
 
   useEffect(() => {
-    if (allConfigsReady && !ws) {
+    if (!ws) {
       const newWs = new WebSocket(getRealtimeWsUrl("/logs"));
 
       newWs.onopen = () => {
@@ -68,16 +109,10 @@ const CallInterface = () => {
 
       setWs(newWs);
     }
-  }, [allConfigsReady, ws]);
+  }, [ws]);
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <ChecklistAndConfig
-        ready={allConfigsReady}
-        setReady={setAllConfigsReady}
-        selectedPhoneNumber={selectedPhoneNumber}
-        setSelectedPhoneNumber={setSelectedPhoneNumber}
-      />
       <TopBar />
       <div className="flex-grow p-4 flex flex-col">
         <div className="grid grid-cols-12 gap-4 h-full">
@@ -102,18 +137,6 @@ const CallInterface = () => {
 
           {/* Middle Column: Transcript */}
           <div className="col-span-6 flex flex-col gap-4 h-full overflow-hidden">
-            <PhoneNumberChecklist
-              selectedPhoneNumber={selectedPhoneNumber}
-              allConfigsReady={allConfigsReady}
-              setAllConfigsReady={setAllConfigsReady}
-              callSid={callSid}
-              setCallSid={setCallSid}
-              recordingSid={recordingSid}
-              setRecordingSid={setRecordingSid}
-              recordingStatus={recordingStatus}
-              setRecordingStatus={setRecordingStatus}
-              setCallStatus={setCallStatus}
-            />
             <Transcript items={items} />
           </div>
 

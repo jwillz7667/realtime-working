@@ -4,7 +4,27 @@ Combine OpenAI's Realtime API and Twilio's phone calling capability to build an 
 
 <img width="1728" alt="Screenshot 2024-12-18 at 4 59 30 PM" src="https://github.com/user-attachments/assets/d3c8dcce-b339-410c-85ca-864a8e0fc326" />
 
-## Quick Setup
+## Deployment Options
+
+You have multiple ways to run this application:
+
+1. **🚀 Recommended: Local Backend + Static Ngrok + Vercel Frontend**
+   - Free backend (runs locally with your static ngrok domain)
+   - Deployed frontend on Vercel
+   - Perfect for development and demos
+   - See [DEPLOYMENT_OPTIONS.md](DEPLOYMENT_OPTIONS.md)
+
+2. **☁️ Production: Railway Backend + Vercel Frontend**
+   - Fully cloud-hosted (24/7 availability)
+   - ~$5-15/month for Railway backend
+   - See [DEPLOYMENT.md](DEPLOYMENT.md)
+
+3. **💻 Local Development: Everything Local**
+   - See [Quick Setup](#quick-setup) below
+
+Choose the option that fits your needs!
+
+## Quick Setup (Local Development)
 
 Open three terminal windows:
 
@@ -12,7 +32,7 @@ Open three terminal windows:
 | -------- | ----------------------------- | ------------------------------------ |
 | 1        | To run the `webapp`           | `npm run dev`                        |
 | 2        | To run the `websocket-server` | `npm run dev`                        |
-| 3        | To run `ngrok`                | `ngrok http 8081`                    |
+| 3        | To run `ngrok`                | `ngrok http 8081 --domain=realtime.ngrok.pro` (with your static domain) |
 
 Make sure all vars in `webapp/.env` and `websocket-server/.env` are set correctly. See [full setup](#full-setup) section for more.
 

@@ -26,12 +26,38 @@ if (!OPENAI_API_KEY) {
 const app = express();
 app.use(cors());
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({
+  server,
+  // Allow all origins for WebSocket connections
+  verifyClient: (info: { origin: string; secure: boolean; req: IncomingMessage }) => {
+    // Accept all origins in development
+    return true;
+  }
+});
 
 app.use(express.urlencoded({ extended: false }));
 
 const twimlPath = join(__dirname, "twiml.xml");
 const twimlTemplate = readFileSync(twimlPath, "utf-8");
+
+app.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    message: "WebSocket server is running",
+    publicUrl: PUBLIC_URL,
+    endpoints: {
+      websocket: {
+        logs: "/logs",
+        call: "/call"
+      },
+      http: {
+        publicUrl: "/public-url",
+        twiml: "/twiml",
+        tools: "/tools"
+      }
+    }
+  });
+});
 
 app.get("/public-url", (req, res) => {
   res.json({ publicUrl: PUBLIC_URL });
@@ -69,27 +95,49 @@ app.get("/tools", (req, res) => {
 let currentCall: WebSocket | null = null;
 
 wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
+  console.log(`[WebSocket] New connection attempt from ${req.headers.origin || 'unknown'}`);
+  console.log(`[WebSocket] Path: ${req.url}`);
+  console.log(`[WebSocket] Headers:`, {
+    host: req.headers.host,
+    upgrade: req.headers.upgrade,
+    connection: req.headers.connection,
+    origin: req.headers.origin
+  });
+
   const url = new URL(req.url || "", `http://${req.headers.host}`);
   const parts = url.pathname.split("/").filter(Boolean);
 
   if (parts.length < 1) {
+    console.log(`[WebSocket] Closing - no path specified`);
     ws.close();
     return;
   }
 
   const type = parts[0];
+  console.log(`[WebSocket] Connection type: ${type}`);
 
   if (type === "call") {
     if (currentCall) currentCall.close();
     currentCall = ws;
+    console.log(`[WebSocket] Handling call connection`);
     handleCallConnection(currentCall, OPENAI_API_KEY);
   } else if (type === "logs") {
+    console.log(`[WebSocket] Handling frontend logs connection`);
     handleFrontendConnection(ws);
   } else {
+    console.log(`[WebSocket] Closing - unknown type: ${type}`);
     ws.close();
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+wss.on("error", (error) => {
+  console.error("[WebSocket] Server error:", error);
+});
+
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
+  console.log(`Accessible via http://localhost:${PORT}`);
+  if (PUBLIC_URL) {
+    console.log(`Public URL: ${PUBLIC_URL}`);
+  }
 });

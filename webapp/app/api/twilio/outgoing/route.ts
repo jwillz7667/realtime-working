@@ -68,6 +68,10 @@ export async function POST(request: Request) {
       from: callerId,
       url: twimlUrl,
       method: "POST",
+      record: true, // Automatically record all outgoing calls
+      recordingChannels: "dual", // Record both channels separately
+      recordingStatusCallback: undefined, // Optional: add webhook URL for recording events
+      recordingStatusCallbackMethod: "POST",
     });
 
     return Response.json({ sid: call.sid, status: call.status });
