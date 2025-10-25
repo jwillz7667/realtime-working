@@ -8,11 +8,17 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "../",
+    "rootDirs": ["./src", "../shared"],
     "noEmitOnError": true,
-    "resolveJsonModule": true, 
-    "incremental": true 
+    "resolveJsonModule": true,
+    "incremental": true,
+    "baseUrl": ".",
+    "paths": {
+      "@supabase/supabase-js": ["node_modules/@supabase/supabase-js"],
+      "zod": ["node_modules/zod"]
+    }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*", "../shared/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

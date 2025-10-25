@@ -109,6 +109,90 @@ Optional:
 - `TWILIO_TWIML_URL` - Explicit TwiML URL (defaults to websocket-server PUBLIC_URL)
 - `NEXT_PUBLIC_REALTIME_SERVER_URL` - Override relay base URL (defaults to `http://localhost:8081`)
 
+## Voice Quality Best Practices
+
+### Optimal Configuration for Speech-to-Speech Quality
+
+Based on OpenAI's latest recommendations for the `gpt-realtime-2025-08-28` model, these settings provide the best voice conversation quality:
+
+#### 1. Session Instructions (Voice Behavior)
+The gpt-realtime model responds well to detailed voice instructions. Include specific guidance on:
+- **Tone:** Warm, friendly, professional, empathetic, etc.
+- **Pacing:** Moderate speed, clear enunciation, natural pauses
+- **Style:** Conversational, formal, casual, etc.
+
+**Example:**
+```
+"You are a helpful AI assistant. Speak naturally and conversationally with a warm,
+friendly tone. Pace your speech moderately with clear enunciation and natural pauses
+between thoughts. Sound empathetic and engaged in the conversation."
+```
+
+#### 2. Turn Detection (VAD)
+**Recommended:** Use `semantic_vad` with `medium` eagerness for most use cases.
+
+```json
+{
+  "type": "semantic_vad",
+  "eagerness": "medium",
+  "interrupt_response": true,
+  "create_response": true
+}
+```
+
+**Eagerness Levels:**
+- `low` - Most patient, waits longer for user to finish (best for thoughtful conversations)
+- `medium` - Balanced, works well for most scenarios
+- `high` - Responds quickly, may interrupt occasionally
+- `auto` - Model decides dynamically
+
+**Why semantic_vad?** It understands context and is less likely to interrupt users mid-sentence compared to `server_vad`, which only detects silence.
+
+#### 3. Audio Format & Quality
+**For Twilio (telephony):**
+- Format: `g711_ulaw` (8kHz) - Optimized for phone calls
+- This is the maximum quality Twilio supports
+
+**For direct web implementations (non-Twilio):**
+- Format: `pcm16` at 24kHz - Provides 3x higher fidelity than telephony
+- Use this for browser-based applications for best quality
+
+**Current configuration is optimal for Twilio** but inherently limited by telephony bandwidth.
+
+#### 4. Noise Reduction
+- `near_field` - For close microphones (phones, headsets)
+- `far_field` - For room audio, speakerphones
+
+**For Twilio phone calls:** Always use `near_field`.
+
+#### 5. Voice Selection
+Available voices with distinct characteristics:
+- `alloy`, `ash`, `ballad`, `coral`, `echo`, `sage`, `shimmer`, `verse`, `marin`
+
+Test different voices to find the best quality for your use case. The default `marin` voice is well-regarded for natural conversations.
+
+#### 6. Latency Optimization
+**Target:** 800ms voice-to-voice latency for conversational AI
+
+The current audio buffering strategy (120ms commit delay) is optimized for this target while maintaining audio quality.
+
+### Quality Limitations
+
+**Telephony Constraint:** Twilio uses 8kHz µ-law audio, which is lower quality than modern VoIP standards. This is a fundamental limitation of the PSTN (Public Switched Telephone Network).
+
+**For highest quality:** Consider offering a web-based voice interface alongside Twilio that uses:
+- WebRTC for real-time audio streaming
+- PCM16 format at 24kHz sample rate
+- Direct connection to OpenAI Realtime API (without telephony compression)
+
+### UI Recommendations
+Always provide:
+- **Mute button** - Prevents echo/feedback in noisy environments
+- **Force reply button** - Manually triggers assistant response when VAD doesn't detect turn completion
+- **Interrupt control** - Allows users to cut off lengthy responses
+
+VAD can still be imperfect with background noise, accents, or unusual speech patterns.
+
 ## Architecture Details
 
 ### Call Flow Lifecycle

@@ -1,9 +1,24 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = localFont({
+  src: [
+    {
+      path: "../public/fonts/inter-latin-400-normal.woff2",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/inter-latin-700-normal.woff2",
+      weight: "700",
+      style: "normal",
+    },
+  ],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Verbio Call Assistant",
@@ -36,7 +51,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

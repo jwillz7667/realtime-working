@@ -1,0 +1,18 @@
+{
+  "name": "supabase-migrations",
+  "version": "1.0.0",
+  "description": "Database migrations and seed data for multi-tenant voice assistant",
+  "scripts": {
+    "migrate": "ts-node run-migrations.ts",
+    "seed": "ts-node seed.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.76.1",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}
