@@ -19,6 +19,10 @@ docs/
 # Exclude Supabase (not needed for websocket-server)
 supabase/
 
+# Exclude lock files (we use npm install with specific workspaces)
+package-lock.json
+webapp/package-lock.json
+
 # Node modules will be reinstalled
 node_modules/
 
