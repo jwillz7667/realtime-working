@@ -4,10 +4,11 @@
 [phases.setup]
 nixPkgs = ["nodejs_22"]
 nixLibs = []
+nixOverlays = []
 
 [phases.install]
 cmds = [
-  "npm install --workspace=shared --workspace=websocket-server --include-workspace-root"
+  "npm install --workspace=shared --workspace=websocket-server --include-workspace-root --no-audit"
 ]
 
 [phases.build]
@@ -18,3 +19,6 @@ cmd = "npm start"
 
 [start]
 cmd = "npm start"
+
+[variables]
+NPM_CONFIG_PREFER_OFFLINE = "false"
