@@ -7,8 +7,7 @@ nixLibs = []
 
 [phases.install]
 cmds = [
-  "npm run install:shared",
-  "npm run install:server"
+  "npm install --workspace=shared --workspace=websocket-server --include-workspace-root"
 ]
 
 [phases.build]
