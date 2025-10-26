@@ -1,0 +1,29 @@
+# Exclude webapp frontend (deployed separately to Vercel)
+webapp/
+
+# Exclude documentation
+docs/
+*.md
+!README.md
+
+# Exclude development files
+.env
+.env.*
+*.log
+.DS_Store
+
+# Exclude git
+.git/
+.gitignore
+
+# Exclude Supabase (not needed for websocket-server)
+supabase/
+
+# Node modules will be reinstalled
+node_modules/
+
+# Source files (we only need compiled dist/)
+websocket-server/src/
+websocket-server/tsconfig.json
+websocket-server/nodemon.json
+shared/lib/
