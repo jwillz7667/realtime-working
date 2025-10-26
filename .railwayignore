@@ -9,13 +9,9 @@ docs/
 .env.*
 *.log
 .DS_Store
-.git/
-.gitignore
 
 # Exclude Supabase
 supabase/
 
-# Exclude root workspace files
-package.json
-package-lock.json
+# Exclude Vercel config
 vercel.json
