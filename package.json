@@ -9,7 +9,8 @@
   },
   "workspaces": [
     "shared",
-    "websocket-server"
+    "websocket-server",
+    "webapp"
   ],
   "scripts": {
     "build": "npm run build --workspace=websocket-server",
