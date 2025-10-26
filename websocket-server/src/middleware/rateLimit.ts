@@ -63,7 +63,9 @@ class RateLimitStore {
       // Enforce max size (LRU eviction)
       if (this.store.size > this.maxSize) {
         const firstKey = this.store.keys().next().value;
-        this.store.delete(firstKey);
+        if (firstKey) {
+          this.store.delete(firstKey);
+        }
       }
 
       return {
