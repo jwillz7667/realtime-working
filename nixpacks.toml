@@ -3,12 +3,13 @@ nixPkgs = ["nodejs_22"]
 
 [phases.install]
 cmds = [
+  "npm install --workspaces=false",
   "npm install --workspace=shared",
   "npm install --workspace=websocket-server"
 ]
 
 [phases.build]
-cmds = ["npm run build --workspace=websocket-server"]
+cmds = ["npm run build"]
 
 [start]
-cmd = "npm start --workspace=websocket-server"
+cmd = "npm start"
