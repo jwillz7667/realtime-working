@@ -6,7 +6,17 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import type { Database } from '../types/database';
+import type {
+  ApiKey,
+  ApiKeyInsert,
+  AuditLogInsert,
+  Database,
+  Json,
+  TenantStatus,
+  TenantTier,
+  UserRole,
+  UserStatus,
+} from '../types/database';
 
 // =====================================================
 // TYPE DEFINITIONS
@@ -17,10 +27,10 @@ export type AuthenticatedUser = {
   authUserId: string;
   email: string;
   tenantId: string;
-  role: 'owner' | 'admin' | 'member' | 'viewer';
+  role: UserRole;
   permissions: string[];
-  metadata: Record<string, any>;
-  status: string;
+  metadata: Record<string, unknown>;
+  status: UserStatus;
 };
 
 export type AuthContext = {
@@ -28,9 +38,9 @@ export type AuthContext = {
   tenant: {
     id: string;
     name: string;
-    tier: 'free' | 'pro' | 'enterprise';
-    status: string;
-    settings: Record<string, any>;
+    tier: TenantTier;
+    status: TenantStatus;
+    settings: Record<string, unknown>;
   };
 };
 
@@ -58,19 +68,19 @@ type SupabaseAuthUser = {
 type SupabaseTenant = {
   id: string;
   name: string;
-  tier: 'free' | 'pro' | 'enterprise';
-  status: string;
-  settings: Record<string, any>;
+  tier: TenantTier;
+  status: TenantStatus;
+  settings: Record<string, unknown>;
 };
 
 type SupabaseUserRecord = {
   id: string;
   auth_user_id: string;
   email: string | null;
-  role: string;
+  role: UserRole;
   permissions: string[] | null;
-  metadata: Record<string, any> | null;
-  status: string;
+  metadata: Record<string, unknown> | null;
+  status: UserStatus;
   tenant_id: string;
   tenants: SupabaseTenant;
 };
@@ -170,12 +180,12 @@ export async function verifyToken(
       authUserId: statusAwareUser.id,
       email: statusAwareUser.email || userRecord.email || '',
       tenantId: userRecord.tenant_id,
-      role: userRecord.role as any,
-      permissions: userRecord.permissions || [],
-      metadata: userRecord.metadata || {},
+      role: userRecord.role,
+      permissions: userRecord.permissions ?? [],
+      metadata: userRecord.metadata ?? {},
       status: userRecord.status,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[Auth] Token verification exception:', error);
     return null;
   }
@@ -269,28 +279,30 @@ export async function verifyApiKey(
     }
 
     // Update last_used_at asynchronously (don't wait)
-    void (supabase
+    void supabase
       .from('api_keys')
       .update({
         last_used_at: new Date().toISOString(),
-        usage_count: (matchedKey.usage_count || 0) + 1,
+        usage_count: (matchedKey.usage_count ?? 0) + 1,
       })
-      .eq('id', matchedKey.id) as PromiseLike<unknown>)
-      .catch((err: unknown) => {
-        console.error('[Auth] Failed to update API key usage:', err);
+      .eq('id', matchedKey.id)
+      .then(({ error: updateError }) => {
+        if (updateError) {
+          console.error('[Auth] Failed to update API key usage:', updateError.message);
+        }
       });
 
     return {
       id: user.id,
       authUserId: user.auth_user_id,
-      email: user.email,
+      email: user.email ?? '',
       tenantId: matchedKey.tenant_id,
       role: user.role,
-      permissions: matchedKey.scopes as string[], // API key scopes override user permissions
-      metadata: user.metadata || {},
+      permissions: matchedKey.scopes, // API key scopes override user permissions
+      metadata: user.metadata ?? {},
       status: user.status,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[Auth] API key verification exception:', error);
     return null;
   }
@@ -331,7 +343,7 @@ export async function loadAuthContext(
         settings: tenantRecord.settings || {},
       },
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[Auth] Failed to load auth context:', error);
     return null;
   }
@@ -447,7 +459,7 @@ export async function createApiKey(
     // Insert into database
     const { data, error } = await supabase
       .from('api_keys')
-      .insert({
+      .insert<ApiKeyInsert>({
         user_id: userId,
         tenant_id: tenantId,
         name: validated.name,
@@ -456,8 +468,12 @@ export async function createApiKey(
         scopes: validated.scopes,
         expires_at: expiresAt,
         is_active: true,
+        last_used_at: null,
+        usage_count: 0,
+        metadata: {} as Json,
+        status: 'active',
       })
-      .select()
+      .select<ApiKey>()
       .single();
 
     if (error || !data) {
@@ -466,7 +482,7 @@ export async function createApiKey(
     }
 
     // Log audit event
-    await supabase.from('audit_logs').insert({
+    await supabase.from('audit_logs').insert<AuditLogInsert>({
       tenant_id: tenantId,
       user_id: userId,
       action: 'api_key.created',
@@ -477,6 +493,10 @@ export async function createApiKey(
         scopes: validated.scopes,
         expires_at: expiresAt,
       },
+      new_values: null,
+      old_values: null,
+      ip_address: null,
+      user_agent: null,
     });
 
     return {
@@ -485,7 +505,7 @@ export async function createApiKey(
         id: data.id,
         name: data.name,
         keyPrefix: keyPrefix,
-        scopes: data.scopes as string[],
+        scopes: data.scopes,
         tenantId: data.tenant_id,
         userId: data.user_id,
         expiresAt: data.expires_at,
@@ -493,7 +513,7 @@ export async function createApiKey(
         createdAt: data.created_at,
       },
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[Auth] API key creation exception:', error);
     return null;
   }
@@ -511,7 +531,7 @@ export async function revokeApiKey(
   try {
     const { error } = await supabase
       .from('api_keys')
-      .update({ is_active: false })
+      .update({ is_active: false, status: 'revoked' })
       .eq('id', keyId)
       .eq('tenant_id', tenantId);
 
@@ -521,17 +541,21 @@ export async function revokeApiKey(
     }
 
     // Log audit event
-    await supabase.from('audit_logs').insert({
+    await supabase.from('audit_logs').insert<AuditLogInsert>({
       tenant_id: tenantId,
       user_id: userId,
       action: 'api_key.revoked',
       resource_type: 'api_key',
       resource_id: keyId,
-      metadata: {},
+      metadata: {} as Json,
+      old_values: null,
+      new_values: null,
+      ip_address: null,
+      user_agent: null,
     });
 
     return true;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[Auth] API key revocation exception:', error);
     return false;
   }
@@ -550,27 +574,26 @@ export async function listApiKeys(
       .select('id, name, key_prefix, scopes, tenant_id, user_id, expires_at, last_used_at, created_at, is_active')
       .eq('tenant_id', tenantId)
       .eq('is_active', true)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .returns<ApiKeyRow[]>();
 
     if (error) {
       console.error('[Auth] Failed to list API keys:', error.message);
       return [];
     }
 
-    const records = (data || []) as ApiKeyRow[];
-
-    return records.map((key: ApiKeyRow) => ({
+    return (data ?? []).map(key => ({
       id: key.id,
       name: key.name,
       keyPrefix: key.key_prefix,
-      scopes: key.scopes as string[],
+      scopes: key.scopes,
       tenantId: key.tenant_id,
       userId: key.user_id,
       expiresAt: key.expires_at,
       lastUsedAt: key.last_used_at,
       createdAt: key.created_at,
     }));
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[Auth] List API keys exception:', error);
     return [];
   }

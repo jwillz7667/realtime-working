@@ -157,7 +157,7 @@ async function authenticateRequest(req: Request, res: Response, next: NextFuncti
     }
 
     next();
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[Auth] Authentication error:', error);
 
     if (error instanceof AuthError) {
@@ -378,7 +378,7 @@ export async function authenticateWebSocket(
     console.log(`[WS Auth] Authenticated: ${user.email} (${user.id}) - Tenant: ${user.tenantId}`);
 
     return user;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[WS Auth] Authentication error:', error);
     return null;
   }
@@ -443,7 +443,7 @@ export async function logAuthEvent(
     };
 
     await (supabase.from('audit_logs') as any).insert(entry);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[Auth] Failed to log audit event:', error);
   }
 }

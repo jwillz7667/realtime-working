@@ -3,7 +3,7 @@
  * Production-ready CRUD operations for API keys with audit logging
  */
 
-import express, { type RequestHandler } from 'express';
+import express, { type Request, type RequestHandler, type Response } from 'express';
 import { z } from 'zod';
 import { requireAuth, requirePermission, getSupabaseClient } from '../middleware/auth';
 import { apiKeyCreationRateLimiter, apiRateLimiter } from '../middleware/rateLimit';
@@ -15,11 +15,27 @@ import {
   ApiKeyCreateSchema,
   type ApiKeyInfo,
 } from '../../../shared/lib/auth';
+import type { AuthenticatedUser } from '../../../shared/lib/auth';
 import type { Database } from '../../../shared/types/database';
 
 type ApiKeyRow = Database['public']['Tables']['api_keys']['Row'];
 
 const router = express.Router();
+
+function getAuthenticatedUser(req: Request, res: Response): AuthenticatedUser | null {
+  const user = req.user;
+  if (!user) {
+    res.status(401).json({
+      error: {
+        code: 'not_authenticated',
+        message: 'Authentication required',
+      },
+    });
+    return null;
+  }
+
+  return user;
+}
 
 // =====================================================
 // VALIDATION SCHEMAS
@@ -45,7 +61,10 @@ const RevokeApiKeyRequestSchema = z.object({
  */
 const listApiKeysHandler: RequestHandler = async (req, res) => {
   try {
-    const user = req.user!;
+    const user = getAuthenticatedUser(req, res);
+    if (!user) {
+      return;
+    }
     const supabase = getSupabaseClient();
 
     const keys: ApiKeyInfo[] = await listApiKeys(supabase, user.tenantId);
@@ -62,7 +81,7 @@ const listApiKeysHandler: RequestHandler = async (req, res) => {
         // Don't return full key or hash
       })),
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[API Keys] List error:', error);
     res.status(500).json({
       error: {
@@ -91,7 +110,10 @@ router.get(
  */
 const getApiKeyHandler: RequestHandler = async (req, res) => {
   try {
-    const user = req.user!;
+    const user = getAuthenticatedUser(req, res);
+    if (!user) {
+      return;
+    }
     const supabase = getSupabaseClient();
     const keyId = req.params.id;
 
@@ -137,7 +159,7 @@ const getApiKeyHandler: RequestHandler = async (req, res) => {
         usageCount: keyRecord.usage_count || 0,
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[API Keys] Get error:', error);
     res.status(500).json({
       error: {
@@ -166,7 +188,10 @@ router.get(
  */
 const createApiKeyHandler: RequestHandler = async (req, res) => {
   try {
-    const user = req.user!;
+    const user = getAuthenticatedUser(req, res);
+    if (!user) {
+      return;
+    }
     const supabase = getSupabaseClient();
 
     // Validate request body
@@ -244,7 +269,7 @@ const createApiKeyHandler: RequestHandler = async (req, res) => {
       },
       warning: 'Save this API key securely. It will not be shown again.',
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[API Keys] Create error:', error);
     res.status(500).json({
       error: {
@@ -273,7 +298,10 @@ router.post(
  */
 const revokeApiKeyHandler: RequestHandler = async (req, res) => {
   try {
-    const user = req.user!;
+    const user = getAuthenticatedUser(req, res);
+    if (!user) {
+      return;
+    }
     const supabase = getSupabaseClient();
     const keyId = req.params.id;
 
@@ -338,7 +366,7 @@ const revokeApiKeyHandler: RequestHandler = async (req, res) => {
         revokedAt: new Date().toISOString(),
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[API Keys] Revoke error:', error);
     res.status(500).json({
       error: {
@@ -367,7 +395,10 @@ router.delete(
  */
 const rotateApiKeyHandler: RequestHandler = async (req, res) => {
   try {
-    const user = req.user!;
+    const user = getAuthenticatedUser(req, res);
+    if (!user) {
+      return;
+    }
     const supabase = getSupabaseClient();
     const keyId = req.params.id;
 
@@ -456,7 +487,7 @@ const rotateApiKeyHandler: RequestHandler = async (req, res) => {
       },
       warning: 'Save this API key securely. It will not be shown again. The old key has been revoked.',
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[API Keys] Rotate error:', error);
     res.status(500).json({
       error: {
@@ -485,10 +516,16 @@ router.post(
  */
 const getScopesHandler: RequestHandler = async (req, res) => {
   try {
-    const user = req.user!;
+    const user = getAuthenticatedUser(req, res);
+    if (!user) {
+      return;
+    }
 
-    // Return all available scopes
-    const allScopes = Object.entries(Permissions).map(([key, value]) => ({
+    const permissionEntries = Object.entries(Permissions) as Array<
+      [keyof typeof Permissions, (typeof Permissions)[keyof typeof Permissions]]
+    >;
+
+    const allScopes = permissionEntries.map(([key, value]) => ({
       key,
       value,
       description: getScopeDescription(value),
@@ -508,7 +545,7 @@ const getScopesHandler: RequestHandler = async (req, res) => {
         userRole: user.role,
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[API Keys] Scopes error:', error);
     res.status(500).json({
       error: {

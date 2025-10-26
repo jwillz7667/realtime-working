@@ -175,10 +175,11 @@ export interface ApiKey {
   name: string;
   key_prefix: string;
   key_hash: string;
-  scopes: Json;
+  scopes: string[];
   status: ApiKeyStatus;
+  is_active: boolean;
   last_used_at: string | null;
-  usage_count: number;
+  usage_count: number | null;
   expires_at: string | null;
   metadata: Json;
   created_at: string;
@@ -257,51 +258,61 @@ export interface Database {
         Row: Tenant;
         Insert: TenantInsert;
         Update: TenantUpdate;
+        Relationships: [];
       };
       users: {
         Row: User;
         Insert: UserInsert;
         Update: UserUpdate;
+        Relationships: [];
       };
       call_sessions: {
         Row: CallSession;
         Insert: CallSessionInsert;
         Update: CallSessionUpdate;
+        Relationships: [];
       };
       transcripts: {
         Row: Transcript;
         Insert: TranscriptInsert;
         Update: never;
+        Relationships: [];
       };
       function_calls: {
         Row: FunctionCall;
         Insert: FunctionCallInsert;
         Update: FunctionCallUpdate;
+        Relationships: [];
       };
       usage_metrics: {
         Row: UsageMetric;
         Insert: UsageMetricInsert;
         Update: never;
+        Relationships: [];
       };
       audit_logs: {
         Row: AuditLog;
         Insert: AuditLogInsert;
         Update: never;
+        Relationships: [];
       };
       api_keys: {
         Row: ApiKey;
         Insert: ApiKeyInsert;
         Update: ApiKeyUpdate;
+        Relationships: [];
       };
       webhooks: {
         Row: Webhook;
         Insert: WebhookInsert;
         Update: WebhookUpdate;
+        Relationships: [];
       };
       webhook_events: {
         Row: WebhookEvent;
         Insert: WebhookEventInsert;
         Update: never;
+        Relationships: [];
       };
     };
     Views: {};
@@ -324,5 +335,6 @@ export interface Database {
       };
     };
     Enums: {};
+    CompositeTypes: {};
   };
 }
