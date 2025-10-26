@@ -3,18 +3,19 @@
 
 [phases.setup]
 nixPkgs = ["nodejs_22"]
+nixLibs = []
 
 [phases.install]
 cmds = [
-  "cd shared && npm install",
-  "cd websocket-server && npm install"
+  "npm run install:shared",
+  "npm run install:server"
 ]
 
 [phases.build]
-cmds = ["cd websocket-server && npm run build"]
+cmds = ["npm run build"]
 
 [phases.start]
-cmd = "cd websocket-server && npm start"
+cmd = "npm start"
 
-[variables]
-NODE_ENV = "production"
+[start]
+cmd = "npm start"
