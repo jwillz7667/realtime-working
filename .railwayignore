@@ -1,33 +1,21 @@
-# Exclude webapp frontend (deployed separately to Vercel)
+# Exclude webapp (deployed to Vercel)
 webapp/
 
-# Exclude documentation
+# Exclude docs
 docs/
-*.md
-!README.md
 
-# Exclude development files
+# Exclude dev files
 .env
 .env.*
 *.log
 .DS_Store
-
-# Exclude git
 .git/
 .gitignore
 
-# Exclude Supabase (not needed for websocket-server)
+# Exclude Supabase
 supabase/
 
-# Exclude lock files (we use npm install with specific workspaces)
+# Exclude root workspace files
+package.json
 package-lock.json
-webapp/package-lock.json
-
-# Node modules will be reinstalled
-node_modules/
-
-# Source files (we only need compiled dist/)
-websocket-server/src/
-websocket-server/tsconfig.json
-websocket-server/nodemon.json
-shared/lib/
+vercel.json

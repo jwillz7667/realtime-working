@@ -1,24 +1,14 @@
-# Railway deployment configuration for monorepo
-# Deploy from repository root with this configuration
-
 [phases.setup]
 nixPkgs = ["nodejs_22"]
-nixLibs = []
-nixOverlays = []
 
 [phases.install]
 cmds = [
-  "npm install --workspace=shared --workspace=websocket-server --include-workspace-root --no-audit"
+  "cd shared && npm install",
+  "cd websocket-server && npm install"
 ]
 
 [phases.build]
-cmds = ["npm run build"]
-
-[phases.start]
-cmd = "npm start"
+cmds = ["cd websocket-server && npm run build"]
 
 [start]
-cmd = "npm start"
-
-[variables]
-NPM_CONFIG_PREFER_OFFLINE = "false"
+cmd = "cd websocket-server && npm start"
