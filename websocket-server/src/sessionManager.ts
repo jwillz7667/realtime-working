@@ -186,6 +186,72 @@ function getOutputAudioMetrics() {
   return { sampleRateHz, bytesPerSample };
 }
 
+function logModelEvent(event: any) {
+  if (!event || typeof event !== "object") {
+    console.debug("[Realtime] Model event (malformed payload)");
+    return;
+  }
+
+  const type = typeof (event as { type?: unknown }).type === "string"
+    ? (event as { type: string }).type
+    : "(unknown)";
+
+  switch (type) {
+    case "response.output_audio.delta": {
+      const delta =
+        typeof (event as { delta?: unknown }).delta === "string"
+          ? (event as { delta: string }).delta
+          : "";
+      const itemId =
+        typeof (event as { item_id?: unknown }).item_id === "string"
+          ? (event as { item_id: string }).item_id
+          : undefined;
+      const deltaBytes = delta ? Buffer.from(delta, "base64").length : 0;
+      console.debug("[Realtime] Model event response.output_audio.delta", {
+        itemId,
+        deltaBytes,
+      });
+      break;
+    }
+    case "response.output_audio.done":
+    case "response.output_audio_transcript.done":
+    case "response.done":
+    case "response.created":
+    case "response.output_item.done": {
+      console.debug("[Realtime] Model event", {
+        type,
+        keys: Object.keys(event).filter((key) => key !== "type"),
+      });
+      break;
+    }
+    case "input_audio_buffer.committed":
+    case "input_audio_buffer.commit_acknowledged":
+    case "input_audio_buffer.speech_started":
+    case "input_audio_buffer.speech_stopped":
+    case "conversation.item.truncate":
+    case "conversation.item.truncated":
+    case "conversation.item.created":
+    case "conversation.item.done": {
+      console.debug("[Realtime] Model event", {
+        type,
+        keys: Object.keys(event).filter((key) => key !== "type"),
+      });
+      break;
+    }
+    case "error": {
+      console.debug("[Realtime] Model error event", {
+        type,
+        code: (event as { error?: { code?: string } }).error?.code,
+      });
+      break;
+    }
+    default: {
+      const keys = Object.keys(event).filter((key) => key !== "type");
+      console.debug("[Realtime] Model event", { type, keys });
+    }
+  }
+}
+
 function sanitizeSessionUpdatePayload(sessionUpdate: any) {
   if (!sessionUpdate || typeof sessionUpdate !== "object") {
     return {};
@@ -385,9 +451,65 @@ async function handleFunctionCall(item: { name: string; arguments: string }) {
   }
 }
 
+function logTwilioEvent(msg: any) {
+  if (!msg || typeof msg !== "object") {
+    console.debug("[Twilio] Received malformed event payload");
+    return;
+  }
+
+  const eventType =
+    typeof (msg as { event?: unknown }).event === "string"
+      ? (msg as { event: string }).event
+      : "(unknown)";
+
+  switch (eventType) {
+    case "start": {
+      const start = (msg as { start?: any }).start;
+      console.debug("[Twilio] Event start", {
+        streamSid: start?.streamSid,
+        callSid: start?.callSid,
+      });
+      break;
+    }
+    case "media": {
+      const media = (msg as { media?: any }).media;
+      const payload =
+        media && typeof media.payload === "string" ? media.payload : "";
+      const payloadBytes = payload ? Buffer.from(payload, "base64").length : 0;
+      console.debug("[Twilio] Event media", {
+        timestamp: media?.timestamp,
+        track: media?.track,
+        payloadBytes,
+      });
+      break;
+    }
+    case "mark": {
+      const mark = (msg as { mark?: any }).mark;
+      console.debug("[Twilio] Event mark", {
+        name: mark?.name,
+        streamSid: mark?.streamSid,
+      });
+      break;
+    }
+    case "stop": {
+      const stop = (msg as { stop?: any }).stop;
+      console.debug("[Twilio] Event stop", {
+        streamSid: stop?.streamSid,
+      });
+      break;
+    }
+    default: {
+      const keys = Object.keys(msg).filter((key) => key !== "event");
+      console.debug("[Twilio] Event", { type: eventType, keys });
+    }
+  }
+}
+
 function handleTwilioMessage(data: RawData) {
   const msg = parseMessage(data);
   if (!msg) return;
+
+  logTwilioEvent(msg);
 
   switch (msg.event) {
     case "start":
@@ -640,6 +762,8 @@ function tryConnectModel() {
 function handleModelMessage(data: RawData) {
   const event = parseMessage(data);
   if (!event) return;
+
+  logModelEvent(event);
 
   if (event.type === "error") {
     const errorCode = event.error?.code;
