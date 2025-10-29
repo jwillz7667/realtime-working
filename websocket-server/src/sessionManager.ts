@@ -7,6 +7,7 @@ import {
 import {
   REALTIME_MODEL,
   REALTIME_BETA_HEADER,
+  AUDIO_OUTPUT_FORMAT,
   buildDefaultSessionConfig,
   normalizeTurnDetectionConfig,
 } from "./config";
@@ -18,6 +19,7 @@ const MIN_COMMIT_DURATION_MS = 120;
 const MIN_COMMIT_BYTES = Math.ceil(
   (SAMPLE_RATE_HZ * MIN_COMMIT_DURATION_MS) / 1000 * BYTES_PER_SAMPLE
 );
+
 
 const SUPPRESSED_MODEL_EVENTS = new Set([
   "response.audio.delta",
@@ -82,6 +84,7 @@ interface Session {
   responseCreateQueued?: boolean;
   responseCreateForceQueued?: boolean;
   committedAudioPending?: boolean;
+  responseOutputAudioBytes?: number;
 }
 
 let session: Session = {};
@@ -102,6 +105,7 @@ export function handleCallConnection(ws: WebSocket, openAIApiKey: string) {
     session.lastAssistantItem = undefined;
     session.responseStartTimestamp = undefined;
     session.latestMediaTimestamp = undefined;
+    session.responseOutputAudioBytes = undefined;
     if (!session.frontendConns || session.frontendConns.size === 0)
       session = {};
   });
@@ -142,6 +146,44 @@ function normalizeAudioFormat(value: unknown): string | undefined {
     }
   }
   return undefined;
+}
+
+function getOutputAudioMetrics() {
+  const sessionAudio =
+    session.saved_config &&
+    typeof session.saved_config === "object" &&
+    (session.saved_config as { audio?: any }).audio;
+  const sessionOutput =
+    sessionAudio &&
+    typeof sessionAudio === "object" &&
+    (sessionAudio as { output?: any }).output;
+  const sessionFormat =
+    sessionOutput &&
+    typeof sessionOutput === "object" &&
+    (sessionOutput as { format?: any }).format;
+
+  const fallbackFormat = AUDIO_OUTPUT_FORMAT || {};
+  const candidateFormat =
+    sessionFormat && typeof sessionFormat === "object"
+      ? sessionFormat
+      : fallbackFormat;
+
+  const typeCandidate =
+    (candidateFormat as { type?: unknown }).type ??
+    fallbackFormat.type ??
+    "audio/pcmu";
+  const normalizedType = normalizeAudioFormat(typeCandidate) || "audio/pcmu";
+
+  const rateCandidate =
+    (candidateFormat as { rate?: unknown }).rate ?? fallbackFormat.rate;
+  const sampleRateHz =
+    typeof rateCandidate === "number" && rateCandidate > 0
+      ? rateCandidate
+      : SAMPLE_RATE_HZ;
+
+  const bytesPerSample = normalizedType === "audio/pcm" ? 2 : 1;
+
+  return { sampleRateHz, bytesPerSample };
 }
 
 function sanitizeSessionUpdatePayload(sessionUpdate: any) {
@@ -360,6 +402,7 @@ function handleTwilioMessage(data: RawData) {
       session.responseCreateQueued = false;
       session.responseCreateForceQueued = false;
       session.committedAudioPending = false;
+      session.responseOutputAudioBytes = 0;
       if (session.pendingCommitTimer) {
         clearTimeout(session.pendingCommitTimer);
         session.pendingCommitTimer = undefined;
@@ -625,17 +668,35 @@ function handleModelMessage(data: RawData) {
       handleTruncation();
       break;
 
-    case "response.output_audio.delta":
-      if (session.twilioConn && session.streamSid) {
-        if (session.responseStartTimestamp === undefined) {
-          session.responseStartTimestamp = session.latestMediaTimestamp || 0;
-        }
-        if (event.item_id) session.lastAssistantItem = event.item_id;
+    case "response.output_audio.delta": {
+      const delta =
+        typeof event.delta === "string" ? event.delta : undefined;
+      const itemId =
+        typeof event.item_id === "string" ? event.item_id : undefined;
 
+      if (itemId && itemId !== session.lastAssistantItem) {
+        session.responseOutputAudioBytes = 0;
+      }
+
+      if (delta) {
+        const deltaBytes = Buffer.from(delta, "base64").length;
+        session.responseOutputAudioBytes =
+          (session.responseOutputAudioBytes || 0) + deltaBytes;
+      }
+
+      if (itemId) {
+        session.lastAssistantItem = itemId;
+      }
+
+      if (session.responseStartTimestamp === undefined) {
+        session.responseStartTimestamp = session.latestMediaTimestamp || 0;
+      }
+
+      if (delta && session.twilioConn && session.streamSid) {
         jsonSend(session.twilioConn, {
           event: "media",
           streamSid: session.streamSid,
-          media: { payload: event.delta },
+          media: { payload: delta },
         });
 
         jsonSend(session.twilioConn, {
@@ -644,6 +705,7 @@ function handleModelMessage(data: RawData) {
         });
       }
       break;
+    }
 
     case "response.output_audio_transcript.delta":
       // Transcript chunks for assistant audio; feed through to frontend
@@ -654,6 +716,7 @@ function handleModelMessage(data: RawData) {
 
     case "response.created":
       session.responseInProgress = true;
+      session.responseOutputAudioBytes = 0;
       if (!session.responseCreateForceQueued) {
         session.committedAudioPending = false;
       }
@@ -666,6 +729,7 @@ function handleModelMessage(data: RawData) {
       }
       session.responseCreateQueued = false;
       session.responseCreateForceQueued = false;
+      session.responseOutputAudioBytes = 0;
       break;
 
     case "response.output_item.done": {
@@ -716,7 +780,20 @@ function handleTruncation() {
 
   const elapsedMs =
     (session.latestMediaTimestamp || 0) - (session.responseStartTimestamp || 0);
-  const audio_end_ms = elapsedMs > 0 ? elapsedMs : 0;
+  const requestedEndMs = elapsedMs > 0 ? elapsedMs : 0;
+  const playedBytes = session.responseOutputAudioBytes || 0;
+  const { sampleRateHz, bytesPerSample } = getOutputAudioMetrics();
+  const availableEndMs =
+    playedBytes > 0
+      ? Math.floor(
+          (playedBytes / bytesPerSample / sampleRateHz) *
+            1000
+        )
+      : 0;
+  const audio_end_ms =
+    availableEndMs > 0
+      ? Math.min(requestedEndMs, availableEndMs)
+      : requestedEndMs;
 
   if (isOpen(session.modelConn)) {
     sendOpenAIEvent({
@@ -736,12 +813,14 @@ function handleTruncation() {
 
   session.lastAssistantItem = undefined;
   session.responseStartTimestamp = undefined;
+  session.responseOutputAudioBytes = 0;
 }
 
 function closeModel() {
   cleanupConnection(session.modelConn);
   session.modelConn = undefined;
   session.activeModel = undefined;
+  session.responseOutputAudioBytes = 0;
   broadcastToFrontends({
     type: "call.state",
     state: "model_disconnected",
@@ -789,6 +868,7 @@ function closeAllConnections() {
   session.lastAssistantItem = undefined;
   session.responseStartTimestamp = undefined;
   session.latestMediaTimestamp = undefined;
+  session.responseOutputAudioBytes = undefined;
   session.saved_config = undefined;
   session.callSid = undefined;
   session.responseInProgress = undefined;
