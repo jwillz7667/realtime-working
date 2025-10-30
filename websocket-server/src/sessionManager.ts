@@ -430,40 +430,12 @@ function sanitizeAudioFormatConfig(value: unknown) {
     return undefined;
   }
 
-  let normalizedType = normalizeAudioFormat(value);
-  let rate: number | undefined;
-
-  if (!normalizedType && typeof value === "object") {
-    const maybeType = (value as { type?: unknown }).type;
-    if (typeof maybeType === "string") {
-      normalizedType = normalizeAudioFormat(maybeType);
-    }
-  }
-
-  if (typeof value === "object" && value !== null) {
-    const maybeRate = (value as { rate?: unknown }).rate;
-    if (typeof maybeRate === "number" && Number.isFinite(maybeRate) && maybeRate > 0) {
-      rate = maybeRate;
-    } else if (
-      typeof maybeRate === "string" &&
-      maybeRate.trim() &&
-      Number.isFinite(Number.parseInt(maybeRate, 10))
-    ) {
-      const parsedRate = Number.parseInt(maybeRate, 10);
-      if (parsedRate > 0) {
-        rate = parsedRate;
-      }
-    }
-  }
-
+  const normalizedType = normalizeAudioFormat(value);
   if (!normalizedType) {
     return undefined;
   }
 
   const sanitized: Record<string, any> = { type: normalizedType };
-  if (rate !== undefined) {
-    sanitized.rate = rate;
-  }
 
   return sanitized;
 }
