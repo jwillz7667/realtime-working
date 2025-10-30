@@ -944,6 +944,11 @@ function handleModelMessage(data: RawData) {
         jsonSend(session.twilioConn, {
           event: "mark",
           streamSid: session.streamSid,
+          mark: {
+            name: session.lastAssistantItem
+              ? `assistant_${session.lastAssistantItem}`
+              : "assistant_audio_chunk",
+          },
         });
       }
       break;
@@ -1050,6 +1055,8 @@ function handleTruncation() {
     jsonSend(session.twilioConn, {
       event: "clear",
       streamSid: session.streamSid,
+      type: "clear",
+      track: "outbound",
     });
   }
 
