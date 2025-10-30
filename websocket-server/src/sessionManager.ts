@@ -212,6 +212,14 @@ function logModelEvent(event: any) {
   }
 
   switch (type) {
+    case "session.created":
+    case "session.updated": {
+      console.debug("[Realtime] Model event", {
+        type,
+        session: (event as { session?: unknown }).session,
+      });
+      break;
+    }
     case "response.output_audio.delta": {
       const delta =
         typeof (event as { delta?: unknown }).delta === "string"
@@ -449,12 +457,51 @@ function sanitizeAudioFormatConfig(value: unknown) {
     return undefined;
   }
 
-  const normalizedType = normalizeAudioFormat(value);
+  let normalizedType = normalizeAudioFormat(value);
+  let sampleRate: number | undefined;
+
+  if (!normalizedType && typeof value === "object") {
+    const maybeType = (value as { type?: unknown }).type;
+    if (typeof maybeType === "string") {
+      normalizedType = normalizeAudioFormat(maybeType);
+    }
+  }
+
+  if (typeof value === "object" && value !== null) {
+    const source = value as {
+      rate?: unknown;
+      sample_rate?: unknown;
+      sample_rate_hz?: unknown;
+      channels?: unknown;
+    };
+    const candidates = [
+      source.sample_rate,
+      source.sample_rate_hz,
+      source.rate,
+    ];
+    for (const candidate of candidates) {
+      if (typeof candidate === "number" && Number.isFinite(candidate) && candidate > 0) {
+        sampleRate = candidate;
+        break;
+      }
+      if (typeof candidate === "string" && candidate.trim()) {
+        const parsed = Number.parseInt(candidate, 10);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          sampleRate = parsed;
+          break;
+        }
+      }
+    }
+  }
+
   if (!normalizedType) {
     return undefined;
   }
 
   const sanitized: Record<string, any> = { type: normalizedType };
+  if (sampleRate !== undefined) {
+    sanitized.sample_rate = sampleRate;
+  }
 
   return sanitized;
 }
