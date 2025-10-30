@@ -32,6 +32,17 @@ const SUPPRESSED_MODEL_EVENTS = new Set([
   "response.output_audio_transcript.done",
 ]);
 
+const CHATTY_MODEL_EVENT_TYPES = new Set([
+  "response.output_audio_transcript.delta",
+  "response.output_text.delta",
+  "response.text.delta",
+  "conversation.item.input_audio_transcription.delta",
+]);
+
+const CHATTY_CLIENT_EVENT_TYPES = new Set([
+  "input_audio_buffer.append",
+]);
+
 const DOCUMENTED_MODEL_EVENTS = new Set<string>(REALTIME_SERVER_EVENT_TYPES);
 
 const KNOWN_UNDOCUMENTED_MODEL_EVENTS = new Set([
@@ -196,6 +207,10 @@ function logModelEvent(event: any) {
     ? (event as { type: string }).type
     : "(unknown)";
 
+  if (CHATTY_MODEL_EVENT_TYPES.has(type)) {
+    return;
+  }
+
   switch (type) {
     case "response.output_audio.delta": {
       const delta =
@@ -261,6 +276,10 @@ function logClientEvent(event: any) {
   const type = typeof (event as { type?: unknown }).type === "string"
     ? (event as { type: string }).type
     : "(unknown)";
+
+  if (CHATTY_CLIENT_EVENT_TYPES.has(type)) {
+    return;
+  }
   const eventId =
     typeof (event as { event_id?: unknown }).event_id === "string"
       ? (event as { event_id: string }).event_id
