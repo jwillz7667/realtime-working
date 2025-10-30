@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Connect record="record-from-ringing-dual">
-    <Stream url="{{WS_URL}}" />
+  <Connect>
+    <Stream url="{{WS_URL}}" track="both_tracks" />
   </Connect>
 </Response>
