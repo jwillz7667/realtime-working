@@ -252,6 +252,92 @@ function logModelEvent(event: any) {
   }
 }
 
+function logClientEvent(event: any) {
+  if (!event || typeof event !== "object") {
+    console.debug("[Realtime] Client event (malformed payload)");
+    return;
+  }
+
+  const type = typeof (event as { type?: unknown }).type === "string"
+    ? (event as { type: string }).type
+    : "(unknown)";
+  const eventId =
+    typeof (event as { event_id?: unknown }).event_id === "string"
+      ? (event as { event_id: string }).event_id
+      : undefined;
+
+  switch (type) {
+    case "input_audio_buffer.append": {
+      const payload =
+        typeof (event as { audio?: unknown }).audio === "string"
+          ? (event as { audio: string }).audio
+          : "";
+      const audioBytes = payload ? Buffer.from(payload, "base64").length : 0;
+      console.debug("[Realtime] Client event input_audio_buffer.append", {
+        eventId,
+        audioBytes,
+      });
+      break;
+    }
+    case "input_audio_buffer.commit":
+    case "input_audio_buffer.clear":
+    case "response.cancel":
+    case "output_audio_buffer.clear": {
+      console.debug("[Realtime] Client event", { type, eventId });
+      break;
+    }
+    case "conversation.item.create": {
+      const item = (event as { item?: any }).item;
+      const itemType =
+        item && typeof item.type === "string" ? item.type : undefined;
+      const role =
+        item && typeof item.role === "string" ? item.role : undefined;
+      console.debug("[Realtime] Client event conversation.item.create", {
+        eventId,
+        itemType,
+        role,
+      });
+      break;
+    }
+    case "conversation.item.retrieve":
+    case "conversation.item.delete":
+    case "conversation.item.truncate": {
+      const itemId =
+        typeof (event as { item_id?: unknown }).item_id === "string"
+          ? (event as { item_id: string }).item_id
+          : undefined;
+      console.debug("[Realtime] Client event", { type, itemId, eventId });
+      break;
+    }
+    case "response.create": {
+      const responseConfig = (event as { response?: any }).response;
+      const responseKeys = responseConfig
+        ? Object.keys(responseConfig).slice(0, 5)
+        : undefined;
+      console.debug("[Realtime] Client event response.create", {
+        eventId,
+        responseConfigKeys: responseKeys,
+      });
+      break;
+    }
+    case "session.update": {
+      const sessionConfig = (event as { session?: any }).session;
+      const sessionKeys = sessionConfig
+        ? Object.keys(sessionConfig).slice(0, 8)
+        : undefined;
+      console.debug("[Realtime] Client event session.update", {
+        eventId,
+        sessionKeys,
+      });
+      break;
+    }
+    default: {
+      const keys = Object.keys(event).filter((key) => key !== "type");
+      console.debug("[Realtime] Client event", { type, keys, eventId });
+    }
+  }
+}
+
 function sanitizeSessionUpdatePayload(sessionUpdate: any) {
   if (!sessionUpdate || typeof sessionUpdate !== "object") {
     return {};
@@ -340,12 +426,44 @@ function sanitizeSessionUpdatePayload(sessionUpdate: any) {
 }
 
 function sanitizeAudioFormatConfig(value: unknown) {
-  const normalizedType = normalizeAudioFormat(value);
+  if (!value) {
+    return undefined;
+  }
+
+  let normalizedType = normalizeAudioFormat(value);
+  let rate: number | undefined;
+
+  if (!normalizedType && typeof value === "object") {
+    const maybeType = (value as { type?: unknown }).type;
+    if (typeof maybeType === "string") {
+      normalizedType = normalizeAudioFormat(maybeType);
+    }
+  }
+
+  if (typeof value === "object" && value !== null) {
+    const maybeRate = (value as { rate?: unknown }).rate;
+    if (typeof maybeRate === "number" && Number.isFinite(maybeRate) && maybeRate > 0) {
+      rate = maybeRate;
+    } else if (
+      typeof maybeRate === "string" &&
+      maybeRate.trim() &&
+      Number.isFinite(Number.parseInt(maybeRate, 10))
+    ) {
+      const parsedRate = Number.parseInt(maybeRate, 10);
+      if (parsedRate > 0) {
+        rate = parsedRate;
+      }
+    }
+  }
+
   if (!normalizedType) {
     return undefined;
   }
 
   const sanitized: Record<string, any> = { type: normalizedType };
+  if (rate !== undefined) {
+    sanitized.rate = rate;
+  }
 
   return sanitized;
 }
@@ -1074,6 +1192,7 @@ function sendOpenAIEvent(event: any) {
     console.warn("[Realtime] Unsupported OpenAI event type", event.type, event);
     return;
   }
+  logClientEvent(event);
   jsonSend(session.modelConn, event);
 }
 
